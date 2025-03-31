@@ -1,9 +1,10 @@
 # Names and IDs
-
 | Name  | CWL ID | SID
 |-------|--------|----
-| name0 | cwl0   | sid0
-| name1 | cwl1   | sid1 | Or delete this line if you don't have a partner
+| Michelle Zhou | mzhou25   | 53200077
+| William Nguyen | wnguye03 | 71753867
+
+Attributions: This lab was built upon the given Lab 4C solution: https://github.students.cs.ubc.ca/CPSC416-2024W-T2/shared/tree/main/labs/4c_persistence/soln
 
 > [!NOTE]
 >
