@@ -3,6 +3,7 @@ package kvraft
 import (
 	"lab5/labgob"
 	"lab5/labrpc"
+	"lab5/logger"
 	"lab5/raft"
 	"sync"
 	"sync/atomic"
@@ -21,12 +22,21 @@ type KVServer struct {
 	applyCh chan raft.ApplyMsg
 	dead    int32 // set by Kill()
 
-	logger *Logger
+	logger *logger.Logger
 	// Your definitions here.
+
+	db 		map[string]string
+
 }
 
 func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	// Your code here.
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+
+	
+
+	
 }
 
 func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
@@ -65,7 +75,7 @@ func (kv *KVServer) killed() bool {
 // StartKVServer() must return quickly, so it should start goroutines
 // for any long-running work.
 func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
-	logger := Logger(me)
+	// logger := Logger(me)
 	// call labgob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	labgob.Register(Op{})

@@ -4,12 +4,13 @@ import (
 	"crypto/rand"
 	"lab5/constants"
 	"lab5/labrpc"
+	"lab5/logger"
 	"math/big"
 )
 
 type Clerk struct {
 	servers []*labrpc.ClientEnd
-	logger  *Logger
+	logger  *logger.Logger
 	// You will have to modify this struct.
 }
 
@@ -24,7 +25,7 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
 	// You'll have to add code here.
-	ck.logger = NewLogger(ck.clerkId, true, "Clerk", constants.KvLoggingMap)
+	ck.logger = logger.NewLogger(ck.clerkId, true, "Clerk", constants.ClerkLoggingMap)
 
 	return ck
 }
