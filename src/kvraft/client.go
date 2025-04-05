@@ -2,7 +2,7 @@ package kvraft
 
 import (
 	"crypto/rand"
-	"lab5/constants"
+	// "lab5/constants"
 	"lab5/labrpc"
 	"lab5/logger"
 	"math/big"
@@ -25,7 +25,7 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
 	// You'll have to add code here.
-	ck.logger = logger.NewLogger(ck.clerkId, true, "Clerk", constants.ClerkLoggingMap)
+	// ck.logger = logger.NewLogger(ck.clerkId, true, "Clerk", constants.ClerkLoggingMap)
 
 	return ck
 }
@@ -41,9 +41,49 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 // must match the declared types of the RPC handler function's
 // arguments. and reply must be passed as a pointer.
 func (ck *Clerk) Get(key string) string {
+	// try forever
+	for {
+		//For every server 
+		for _, server := range ck.servers {
 
-	// You will have to modify this function.
-	return ""
+				args := GetArgs{
+					Key: key,
+				}
+				reply := GetReply{}
+				
+				//Try to get
+				ok := server.Call("KVServer.Get", &args, &reply)
+			
+			//handle result
+			if ok {
+				if reply.Err == OK {
+					return reply.Value
+				} else if reply.Err == ErrNoKey {
+					return ""
+				} else if reply.Err == ErrWrongLeader {
+					continue
+				}
+			}
+		}
+
+	
+	// result := ""
+	// for _, server := range ck.servers {
+	// 	args := GetArgs{
+	// 		Key: key,
+	// 	}
+	// 	reply := GetReply{}
+	// 	ok := server.Call("KVServer.Get", &args, &reply)
+
+	// 	if ok {
+	// 		result = reply.Value
+	// 		break
+	// 	}
+	// }
+	// // ok := ck.servers[i]
+	// // You will have to modify this function.
+	// return result
+}
 }
 
 // shared by Put and Append.

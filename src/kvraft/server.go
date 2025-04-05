@@ -7,12 +7,20 @@ import (
 	"lab5/raft"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type Op struct {
 	// Your definitions here.
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
+	Operation string
+	Key 	string 
+}
+
+type Result struct {
+	Err Err
+	Value string
 }
 
 type KVServer struct {
@@ -26,16 +34,65 @@ type KVServer struct {
 	// Your definitions here.
 
 	db 		map[string]string
+	maxraftstate int
+	// Hashmap for ongoing calls
+	// index --> channel
+	notifyCh map[int]chan Result
+
+	//duplicate detection
+	lastApplied map[int64]int
 
 }
 
 func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	// Your code here.
 	kv.mu.Lock()
-	defer kv.mu.Unlock()
+	// defer kv.mu.Unlock()
 
+	getOperation := Op {
+		Operation: "Get",
+		Key: args.Key,
+	}
+
+	index, _, isLeader := kv.rf.Start(getOperation)
 	
+	if isLeader == false {
+		reply.Err = ErrWrongLeader
+		return
+	}
 
+	//create new entry here in hashmap
+	channel := make(chan Result, 1)
+	kv.notifyCh[index] = channel
+	kv.mu.Unlock()
+	// timeouts and seperate go routine
+
+
+	//wait for res/timeout
+	select {
+	case result := <- channel:
+		reply.Value = result.Value
+		reply.Err = result.Err
+		
+	case <-time.After(500 * time.Millisecond):
+		reply.Err = ErrTimeout
+	}
+	
+	// WE HAVE 2 seperate threads 
+		// 1 thread polling the apply channel for all messages
+			// if a message matches something in our hashmap of ongoing calls notify get that there is a message for you 
+
+		// on main thread wait for message (blocking) then once recieves response parse response then return to client
+
+	//place inide thread 
+	// key := args.Key
+	// value, exists := kv.db[key]
+
+	// if !exists {
+	// 	reply.Value = ""
+	// } else {
+	// 	reply.Value = value
+	// }
 	
 }
 
@@ -90,6 +147,51 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	// You may need initialization code here.
+
+	//background loop waiting for applyMSG
+	go func() {
+		for {
+			applyMsg := <- kv.applyCh
+
+			// if applyMsg.CommandIndex
+
+			if applyMsg.CommandValid {
+				kv.mu.Lock()
+
+				//cast to Op type
+				operation := applyMsg.Command.(Op)
+				
+				//swithc on Operation
+				if operation.Operation == "Get" {
+					value, keyFound:= kv.db[operation.Key]
+
+					//get the matching waiting thread
+					channel, _ := kv.notifyCh[applyMsg.CommandIndex]
+
+					//notify waiting thread
+					if keyFound {
+						channel <- Result{
+							Value: value,
+							Err: OK,
+						}
+					} else {
+						channel <- Result{
+							Value: "",
+							Err: ErrNoKey,
+						}
+					}
+				} else if operation.Operation == "Put" {
+
+				} else if operation.Operation == "Append" {
+
+				}
+
+				//remove entry 
+				delete(kv.notifyCh, applyMsg.CommandIndex)
+				kv.mu.Unlock()
+			}
+		}
+	}()
 
 	return kv
 }
