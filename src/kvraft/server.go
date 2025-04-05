@@ -14,12 +14,15 @@ type Op struct {
 	// Your definitions here.
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
-	Operation string
-	Key 	string 
+	Operation string //get/append/put
+	Key       string
+	Value     string
+	ClerkId   int64
+	RequestId int64
 }
 
 type Result struct {
-	Err Err
+	Err   Err
 	Value string
 }
 
@@ -33,7 +36,9 @@ type KVServer struct {
 	logger *logger.Logger
 	// Your definitions here.
 
-	db 		map[string]string
+	db map[string]string
+
+	results      map[int]chan Op
 	maxraftstate int
 	// Hashmap for ongoing calls
 	// index --> channel
@@ -41,7 +46,6 @@ type KVServer struct {
 
 	//duplicate detection
 	lastApplied map[int64]int
-
 }
 
 func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
@@ -49,13 +53,13 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	kv.mu.Lock()
 	// defer kv.mu.Unlock()
 
-	getOperation := Op {
+	getOperation := Op{
 		Operation: "Get",
-		Key: args.Key,
+		Key:       args.Key,
 	}
 
 	index, _, isLeader := kv.rf.Start(getOperation)
-	
+
 	if isLeader == false {
 		reply.Err = ErrWrongLeader
 		return
@@ -67,24 +71,23 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	kv.mu.Unlock()
 	// timeouts and seperate go routine
 
-
 	//wait for res/timeout
 	select {
-	case result := <- channel:
+	case result := <-channel:
 		reply.Value = result.Value
 		reply.Err = result.Err
-		
+
 	case <-time.After(500 * time.Millisecond):
 		reply.Err = ErrTimeout
 	}
-	
-	// WE HAVE 2 seperate threads 
-		// 1 thread polling the apply channel for all messages
-			// if a message matches something in our hashmap of ongoing calls notify get that there is a message for you 
 
-		// on main thread wait for message (blocking) then once recieves response parse response then return to client
+	// WE HAVE 2 seperate threads
+	// 1 thread polling the apply channel for all messages
+	// if a message matches something in our hashmap of ongoing calls notify get that there is a message for you
 
-	//place inide thread 
+	// on main thread wait for message (blocking) then once recieves response parse response then return to client
+
+	//place inide thread
 	// key := args.Key
 	// value, exists := kv.db[key]
 
@@ -93,11 +96,37 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	// } else {
 	// 	reply.Value = value
 	// }
-	
+
 }
 
 func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	// Your code here.
+	kv.mu.Lock()
+
+	if lastReq, ok := kv.lastApplied[args.ClerkId]; ok && lastReq >= args.RequestId {
+		reply.Err = OK
+		kv.mu.Unlock()
+		return
+	}
+	op := Op{
+		Type:      args.Op,
+		Key:       args.Key,
+		Value:     args.Value,
+		ClerkId:   args.ClerkId,
+		RequestId: args.RequestId,
+	}
+
+	index, _, isLeader := kv.rf.Start(op)
+	if !isLeader {
+		reply.Err = ErrWrongLeader
+		kv.mu.Unlock()
+		return
+	}
+
+	ch := make(chan Op, 1)
+	kv.results[index] = ch
+	delete(kv.results, index)
+	kv.mu.Unlock()
 }
 
 // the tester calls Kill() when a KVServer instance won't
@@ -151,7 +180,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	//background loop waiting for applyMSG
 	go func() {
 		for {
-			applyMsg := <- kv.applyCh
+			applyMsg := <-kv.applyCh
 
 			// if applyMsg.CommandIndex
 
@@ -160,10 +189,10 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 				//cast to Op type
 				operation := applyMsg.Command.(Op)
-				
+
 				//swithc on Operation
 				if operation.Operation == "Get" {
-					value, keyFound:= kv.db[operation.Key]
+					value, keyFound := kv.db[operation.Key]
 
 					//get the matching waiting thread
 					channel, _ := kv.notifyCh[applyMsg.CommandIndex]
@@ -172,12 +201,12 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 					if keyFound {
 						channel <- Result{
 							Value: value,
-							Err: OK,
+							Err:   OK,
 						}
 					} else {
 						channel <- Result{
 							Value: "",
-							Err: ErrNoKey,
+							Err:   ErrNoKey,
 						}
 					}
 				} else if operation.Operation == "Put" {
@@ -186,7 +215,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 				}
 
-				//remove entry 
+				//remove entry
 				delete(kv.notifyCh, applyMsg.CommandIndex)
 				kv.mu.Unlock()
 			}
