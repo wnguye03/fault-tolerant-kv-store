@@ -2,6 +2,7 @@ package kvraft
 
 import (
 	"crypto/rand"
+	"time"
 	// "lab5/constants"
 	"lab5/constants"
 	"lab5/labrpc"
@@ -100,6 +101,32 @@ func (ck *Clerk) Get(key string) string {
 // arguments. and reply must be passed as a pointer.
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 	// You will have to modify this function.
+	ck.requestId++
+	args := PutAppendArgs{
+		Key:       key,
+		Value:     value,
+		Op:        op,
+		ClerkId:   ck.clerkId,
+		RequestId: ck.requestId,
+	}
+
+	for {
+		for i := 0; i < len(ck.servers); i++ {
+			reply := PutAppendReply{}
+
+			ok := ck.servers[i].Call("KVServer.PutAppend", &args, &reply)
+
+			if ok {
+				if reply.Err == OK {
+					return
+				} else {
+					continue
+				}
+			}
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func (ck *Clerk) Put(key string, value string) {
