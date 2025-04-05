@@ -38,7 +38,6 @@ type KVServer struct {
 
 	db map[string]string
 
-	results      map[int]chan Op
 	maxraftstate int
 	// Hashmap for ongoing calls
 	// index --> channel
@@ -103,29 +102,26 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	// Your code here.
 	kv.mu.Lock()
 
-	if lastReq, ok := kv.lastApplied[args.ClerkId]; ok && lastReq >= args.RequestId {
+	if lastReq, ok := kv.lastApplied[args.ClerkId]; ok && lastReq >= int(args.RequestId) {
 		reply.Err = OK
 		kv.mu.Unlock()
 		return
 	}
-	op := Op{
-		Type:      args.Op,
-		Key:       args.Key,
-		Value:     args.Value,
-		ClerkId:   args.ClerkId,
-		RequestId: args.RequestId,
+	result := Result{
+		Err:   "OK",
+		Value: args.Value,
 	}
 
-	index, _, isLeader := kv.rf.Start(op)
+	index, _, isLeader := kv.rf.Start(result)
 	if !isLeader {
 		reply.Err = ErrWrongLeader
 		kv.mu.Unlock()
 		return
 	}
 
-	ch := make(chan Op, 1)
-	kv.results[index] = ch
-	delete(kv.results, index)
+	ch := make(chan Result, 1)
+	kv.notifyCh[index] = ch
+	delete(kv.notifyCh, index)
 	kv.mu.Unlock()
 }
 
