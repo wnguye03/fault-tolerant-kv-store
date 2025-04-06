@@ -31,12 +31,14 @@ const (
 	LogConnectServer = iota
 	LogDisconnectServer
 	LogKillServer
+	LogStart
 )
 
 var loggingMap = map[int]string{
 	LogConnectServer:    "ConnectServerEvent",
 	LogDisconnectServer: "DisconnectServerEvent",
 	LogKillServer:       "KillServerEvent",
+	LogStart:            "StartEvent",
 }
 
 func randstring(n int) string {
@@ -582,6 +584,8 @@ func (cfg *config) one(cmd interface{}, expectedServers int, retry bool) int {
 				}
 			}
 		}
+
+		cfg.logger.Log(LogStart, "Expected %d at index %d", cmd, index)
 
 		if index != -1 {
 			// somebody claimed to be the leader and to have

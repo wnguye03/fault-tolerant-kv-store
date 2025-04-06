@@ -128,6 +128,7 @@ func (rf *Raft) startElection() {
 				ok := rf.peers[i].Call(REQUEST_VOTE_RPC, args, reply)
 
 				// make sure we don't get old responses
+				rf.logger.Log(constants.LogElection, "(RETURN) got a reply from S%d; reply: %v", i, reply)
 				voteCh <- ok && reply.VoteGranted && reply.Term == args.Term
 			}(i)
 		}
@@ -143,8 +144,8 @@ func (rf *Raft) startElection() {
 
 	// 1. let's check if there's another server who has already been elected
 	rf.mu.Lock()
-	if rf.killed() || rf.raftState != Candidate {
-		// I'm not a Candidate anymore; we're done with counting
+	if rf.killed() || rf.raftState != Candidate || rf.currTerm != args.Term {
+		// I'm not a Candidate anymore or this is an old election; we're done with counting
 		rf.mu.Unlock()
 		return
 	}

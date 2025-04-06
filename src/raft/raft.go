@@ -463,8 +463,6 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArg, reply *AppendEntriesReply)
 		rf.logger.Log(constants.LogCommittingEntriesAppendEntries, "Uncommited Entries from Leader=S%d -> applying indexes [from=%d to=%d] to the SM\n\tlog=%v", rf.leaderId, rf.lastApplied+1, rf.commitIndex, rf.logs)
 
 		for i := rf.lastApplied + 1; i <= rf.commitIndex; i++ {
-
-			//TODO: MAYBE UNLOCK BEFORE 
 			rf.applyCh <- ApplyMsg{
 				CommandValid: true,
 				Command:      rf.logs[i].Command,

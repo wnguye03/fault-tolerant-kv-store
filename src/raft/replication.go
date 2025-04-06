@@ -24,10 +24,11 @@ func (rf *Raft) syncLogEntries(pId int, term int) {
 			return
 		}
 		logLen := len(rf.logs)
+		nextIdx := rf.nextIndex[pId]
 		rf.mu.Unlock()
 
 		rf.cond.L.Lock()
-		if rf.nextIndex[pId] >= logLen {
+		if nextIdx >= logLen {
 			// there is no new logs to be added; just wait for someone to wake me up
 			rf.cond.Wait()
 			// someone asked to check if we need to sync entries
@@ -41,7 +42,12 @@ func (rf *Raft) syncLogEntries(pId int, term int) {
 			return
 		}
 
-		nextIdx := rf.nextIndex[pId]
+		if nextIdx >= len(rf.logs) {
+			rf.logger.Log(constants.LogSyncLogEntries, "Woke up to when: nextIndex[%d]=%d >= len(logs)=%d; nothing to send", pId, nextIdx, len(rf.logs))
+			rf.mu.Unlock()
+			continue
+		}
+
 		prevLogIndex := nextIdx - 1               // index of the prev log entry on my log
 		prevLogTerm := rf.logs[prevLogIndex].Term // the term of the prev log entry
 		leaderCommit := rf.commitIndex            // the index of latest commited log entry
@@ -197,7 +203,7 @@ func (rf *Raft) commitEntries(term int) {
 		rf.logger.Log(constants.LogSyncLogEntries, "Updated rf.commitIndex=%d\n\trf.matchIndex=%v\n\tmajorityCount=%d", rf.commitIndex, rf.matchIndex, majorityCount)
 	}
 
-	if term == rf.currTerm && rf.lastApplied < rf.commitIndex {
+	if term == rf.currTerm && rf.lastApplied < rf.commitIndex && rf.commitIndex < len(rf.logs) {
 		rf.logger.Log(constants.LogCommittingEntriesAppendEntries, "Leader is applying logs [from=%d, to=%d] ..., leaderId=%d, rf.commitIndex=%d\n\tlen(logs)=%d\n\tlogs=%v", rf.lastApplied+1, rf.commitIndex, rf.leaderId, rf.commitIndex, len(rf.logs), rf.logs)
 
 		for i := rf.lastApplied + 1; i <= rf.commitIndex; i++ {
