@@ -103,16 +103,30 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	kv.mu.Lock()
 
 	if lastReq, ok := kv.lastApplied[args.ClerkId]; ok && lastReq >= int(args.RequestId) {
+		
 		reply.Err = OK
 		kv.mu.Unlock()
 		return
 	}
-	result := Result{
-		Err:   "OK",
-		Value: args.Value,
-	}
+	// result := Result{
+	// 	Err:   "OK",
+	// 	Value: args.Value,
+	// }
 
-	index, _, isLeader := kv.rf.Start(result)
+	// getOperation := Op{
+	// 	Operation: "Get",
+	// 	Key:       args.Key,
+	// }
+	operation := Op {
+		Operation: args.Op,
+		Key: args.Key,
+		Value: args.Value,
+		ClerkId: args.ClerkId,
+		RequestId: args.RequestId,
+	}
+	
+
+	index, _, isLeader := kv.rf.Start(operation)
 	if !isLeader {
 		reply.Err = ErrWrongLeader
 		kv.mu.Unlock()
@@ -121,8 +135,19 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 
 	ch := make(chan Result, 1)
 	kv.notifyCh[index] = ch
-	delete(kv.notifyCh, index)
 	kv.mu.Unlock()
+
+
+	select {
+	case result := <-ch:
+	
+		reply.Err = result.Err
+	case <-time.After(500 * time.Millisecond):
+		reply.Err = ErrTimeout
+	}
+	// delete(kv.notifyCh, index)
+
+	
 }
 
 // the tester calls Kill() when a KVServer instance won't
@@ -172,6 +197,9 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	// You may need initialization code here.
+    kv.db = make(map[string]string)
+    kv.notifyCh = make(map[int]chan Result)
+    kv.lastApplied = make(map[int64]int)
 
 	//background loop waiting for applyMSG
 	go func() {
@@ -185,6 +213,8 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 				//cast to Op type
 				operation := applyMsg.Command.(Op)
+
+				// if k
 
 				//swithc on Operation
 				if operation.Operation == "Get" {
@@ -206,9 +236,33 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 						}
 					}
 				} else if operation.Operation == "Put" {
+					key := operation.Key
+					value := operation.Value
 
+					kv.db[key] = value
+
+					channel, _ := kv.notifyCh[applyMsg.CommandIndex]
+					channel <- Result{
+						Value: "",
+						Err: OK,
+					}
 				} else if operation.Operation == "Append" {
+					key := operation.Key
+					value := operation.Value
 
+					currentValue, ok := kv.db[key]
+
+					if ok {
+						kv.db[key] = currentValue + value
+					} else {
+						kv.db[key] = value
+					}
+
+					channel, _ := kv.notifyCh[applyMsg.CommandIndex]
+					channel <- Result{
+						Value: "",
+						Err: OK,
+					}
 				}
 
 				//remove entry
