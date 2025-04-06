@@ -3,6 +3,7 @@ package kvraft
 import (
 	"crypto/rand"
 	"time"
+
 	// "lab5/constants"
 	"lab5/constants"
 	"lab5/labrpc"
@@ -26,6 +27,7 @@ func nrand() int64 {
 }
 
 func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
+	println("MakeClerk")
 	ck := new(Clerk)
 	ck.servers = servers
 	// You'll have to add code here.
@@ -47,6 +49,7 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 // must match the declared types of the RPC handler function's
 // arguments. and reply must be passed as a pointer.
 func (ck *Clerk) Get(key string) string {
+	println("c get")
 	// try forever
 	for {
 		//For every server
@@ -63,10 +66,13 @@ func (ck *Clerk) Get(key string) string {
 			//handle result
 			if ok {
 				if reply.Err == OK {
+					println("c get ok")
 					return reply.Value
 				} else if reply.Err == ErrNoKey {
+					println("c get no key")
 					return ""
 				} else if reply.Err == ErrWrongLeader {
+					println("c get wrong leader")
 					continue
 				}
 			}
@@ -100,6 +106,7 @@ func (ck *Clerk) Get(key string) string {
 // must match the declared types of the RPC handler function's
 // arguments. and reply must be passed as a pointer.
 func (ck *Clerk) PutAppend(key string, value string, op string) {
+	println("c putappend")
 	// You will have to modify this function.
 	ck.requestId++
 	args := PutAppendArgs{
@@ -111,15 +118,18 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	}
 
 	for {
+		println("c putappend 0")
 		for i := 0; i < len(ck.servers); i++ {
+			println("c putappend 1")
 			reply := PutAppendReply{}
 
 			ok := ck.servers[i].Call("KVServer.PutAppend", &args, &reply)
-
 			if ok {
 				if reply.Err == OK {
+					println("c putappend ok")
 					return
 				} else {
+					println("c putappend not ok")
 					continue
 				}
 			}
@@ -130,8 +140,10 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 }
 
 func (ck *Clerk) Put(key string, value string) {
+	println("c put")
 	ck.PutAppend(key, value, "Put")
 }
 func (ck *Clerk) Append(key string, value string) {
+	println("c append")
 	ck.PutAppend(key, value, "Append")
 }

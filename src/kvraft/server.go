@@ -48,10 +48,11 @@ type KVServer struct {
 }
 
 func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
+	println("s get")
 	// Your code here.
 	kv.mu.Lock()
 	// defer kv.mu.Unlock()
-
+	println("s get 1")
 	getOperation := Op{
 		Operation: "Get",
 		Key:       args.Key,
@@ -60,25 +61,34 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	index, _, isLeader := kv.rf.Start(getOperation)
 
 	if isLeader == false {
+		println("s get 2")
 		reply.Err = ErrWrongLeader
 		return
 	}
 
+	println("s get 3")
 	//create new entry here in hashmap
 	channel := make(chan Result, 1)
 	kv.notifyCh[index] = channel
-	kv.mu.Unlock()
-	// timeouts and seperate go routine
 
+	// timeouts and seperate go routine
+	println("s get 4")
+	kv.mu.Unlock()
 	//wait for res/timeout
 	select {
 	case result := <-channel:
+		println("s get 5")
 		reply.Value = result.Value
 		reply.Err = result.Err
 
 	case <-time.After(500 * time.Millisecond):
+		println("s get 6")
 		reply.Err = ErrTimeout
 	}
+
+	kv.mu.Lock()
+	delete(kv.notifyCh, index)
+	kv.mu.Unlock()
 
 	// WE HAVE 2 seperate threads
 	// 1 thread polling the apply channel for all messages
@@ -99,11 +109,13 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 }
 
 func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
+	println("s putappend")
 	// Your code here.
 	kv.mu.Lock()
+	println("s putappend 0")
 
 	if lastReq, ok := kv.lastApplied[args.ClerkId]; ok && lastReq >= int(args.RequestId) {
-		
+		println("s putappend 1")
 		reply.Err = OK
 		kv.mu.Unlock()
 		return
@@ -117,15 +129,15 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	// 	Operation: "Get",
 	// 	Key:       args.Key,
 	// }
-	operation := Op {
+	operation := Op{
 		Operation: args.Op,
-		Key: args.Key,
-		Value: args.Value,
-		ClerkId: args.ClerkId,
+		Key:       args.Key,
+		Value:     args.Value,
+		ClerkId:   args.ClerkId,
 		RequestId: args.RequestId,
 	}
-	
 
+	println("s putappend 2")
 	index, _, isLeader := kv.rf.Start(operation)
 	if !isLeader {
 		reply.Err = ErrWrongLeader
@@ -133,21 +145,26 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 		return
 	}
 
+	println("s putappend 3")
+
 	ch := make(chan Result, 1)
 	kv.notifyCh[index] = ch
 	kv.mu.Unlock()
-
+	println("s putappend 4")
 
 	select {
 	case result := <-ch:
-	
+		println("s putappend 5")
+
 		reply.Err = result.Err
 	case <-time.After(500 * time.Millisecond):
+		println("s putappend 6")
 		reply.Err = ErrTimeout
 	}
-	// delete(kv.notifyCh, index)
+	kv.mu.Lock()
+	delete(kv.notifyCh, index)
+	kv.mu.Unlock()
 
-	
 }
 
 // the tester calls Kill() when a KVServer instance won't
@@ -182,6 +199,7 @@ func (kv *KVServer) killed() bool {
 // StartKVServer() must return quickly, so it should start goroutines
 // for any long-running work.
 func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
+	println("s start")
 	// logger := Logger(me)
 	// call labgob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
@@ -197,9 +215,9 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	// You may need initialization code here.
-    kv.db = make(map[string]string)
-    kv.notifyCh = make(map[int]chan Result)
-    kv.lastApplied = make(map[int64]int)
+	kv.db = make(map[string]string)
+	kv.notifyCh = make(map[int]chan Result)
+	kv.lastApplied = make(map[int64]int)
 
 	//background loop waiting for applyMSG
 	go func() {
@@ -214,54 +232,51 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 				//cast to Op type
 				operation := applyMsg.Command.(Op)
 
-				// if k
-
 				//swithc on Operation
-				if operation.Operation == "Get" {
-					value, keyFound := kv.db[operation.Key]
-
-					//get the matching waiting thread
-					channel, _ := kv.notifyCh[applyMsg.CommandIndex]
-
-					//notify waiting thread
-					if keyFound {
-						channel <- Result{
-							Value: value,
-							Err:   OK,
+				//get the matching waiting thread
+				if channel, exists := kv.notifyCh[applyMsg.CommandIndex]; exists {
+					if operation.Operation == "Get" {
+						value, keyFound := kv.db[operation.Key]
+						//notify waiting thread
+						if keyFound {
+							channel <- Result{
+								Value: value,
+								Err:   OK,
+							}
+						} else {
+							channel <- Result{
+								Value: "",
+								Err:   ErrNoKey,
+							}
 						}
-					} else {
+					} else if operation.Operation == "Put" {
+						kv.lastApplied[operation.ClerkId] = int(operation.RequestId)
+
+						key := operation.Key
+						value := operation.Value
+
+						kv.db[key] = value
+
 						channel <- Result{
 							Value: "",
-							Err:   ErrNoKey,
+							Err:   OK,
 						}
-					}
-				} else if operation.Operation == "Put" {
-					key := operation.Key
-					value := operation.Value
+					} else if operation.Operation == "Append" {
+						key := operation.Key
+						value := operation.Value
 
-					kv.db[key] = value
+						currentValue, ok := kv.db[key]
 
-					channel, _ := kv.notifyCh[applyMsg.CommandIndex]
-					channel <- Result{
-						Value: "",
-						Err: OK,
-					}
-				} else if operation.Operation == "Append" {
-					key := operation.Key
-					value := operation.Value
+						if ok {
+							kv.db[key] = currentValue + value
+						} else {
+							kv.db[key] = value
+						}
 
-					currentValue, ok := kv.db[key]
-
-					if ok {
-						kv.db[key] = currentValue + value
-					} else {
-						kv.db[key] = value
-					}
-
-					channel, _ := kv.notifyCh[applyMsg.CommandIndex]
-					channel <- Result{
-						Value: "",
-						Err: OK,
+						channel <- Result{
+							Value: "",
+							Err:   OK,
+						}
 					}
 				}
 
