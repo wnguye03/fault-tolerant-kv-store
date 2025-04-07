@@ -27,7 +27,7 @@ func nrand() int64 {
 }
 
 func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
-	println("MakeClerk")
+	//println("MakeClerk")
 	ck := new(Clerk)
 	ck.servers = servers
 	// You'll have to add code here.
@@ -49,34 +49,34 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 // must match the declared types of the RPC handler function's
 // arguments. and reply must be passed as a pointer.
 func (ck *Clerk) Get(key string) string {
-	println("c get")
+	ck.requestId++
+	args := GetArgs{
+		Key:       key,
+		ClerkId:   ck.clerkId,
+		RequestId: ck.requestId,
+	}
+	//println("c get")
 	// try forever
 	for {
 		//For every server
 		for _, server := range ck.servers {
-
-			args := GetArgs{
-				Key: key,
-			}
 			reply := GetReply{}
 
 			//Try to get
 			ok := server.Call("KVServer.Get", &args, &reply)
 
 			//handle result
-			if ok {
-				if reply.Err == OK {
-					println("c get ok")
-					return reply.Value
-				} else if reply.Err == ErrNoKey {
-					println("c get no key")
-					return ""
-				} else if reply.Err == ErrWrongLeader {
-					println("c get wrong leader")
-					continue
-				}
+			if ok && reply.Err == OK {
+				//println("c get ok")
+				return reply.Value
 			}
+			if ok && reply.Err == ErrNoKey {
+				//println("c get no key")
+				return ""
+			}
+
 		}
+		time.Sleep(100 * time.Millisecond)
 
 		// result := ""
 		// for _, server := range ck.servers {
@@ -106,7 +106,7 @@ func (ck *Clerk) Get(key string) string {
 // must match the declared types of the RPC handler function's
 // arguments. and reply must be passed as a pointer.
 func (ck *Clerk) PutAppend(key string, value string, op string) {
-	println("c putappend")
+	//println("c putappend")
 	// You will have to modify this function.
 	ck.requestId++
 	args := PutAppendArgs{
@@ -118,20 +118,14 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	}
 
 	for {
-		println("c putappend 0")
-		for i := 0; i < len(ck.servers); i++ {
-			println("c putappend 1")
+		//println("c putappend 0")
+		for _, server := range ck.servers {
+			//println("c putappend 1")
 			reply := PutAppendReply{}
+			ok := server.Call("KVServer.PutAppend", &args, &reply)
 
-			ok := ck.servers[i].Call("KVServer.PutAppend", &args, &reply)
-			if ok {
-				if reply.Err == OK {
-					println("c putappend ok")
-					return
-				} else {
-					println("c putappend not ok")
-					continue
-				}
+			if ok && reply.Err == OK {
+				return
 			}
 		}
 
@@ -140,10 +134,10 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 }
 
 func (ck *Clerk) Put(key string, value string) {
-	println("c put")
+	//println("c put")
 	ck.PutAppend(key, value, "Put")
 }
 func (ck *Clerk) Append(key string, value string) {
-	println("c append")
+	//println("c append")
 	ck.PutAppend(key, value, "Append")
 }
