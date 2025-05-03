@@ -1,7 +1,7 @@
 package raft
 
 import (
-	"lab5/constants"
+	"kvraft/constants"
 	"time"
 )
 

@@ -42,5 +42,4 @@ var RaftLoggingMap = map[int]string{
 var ClerkLoggingMap = map[int]string{
 	LogClerk:  "ClerkEvent",
 	LogServer: "ServerEvent",
-	// TODO: Add more log types here
 }

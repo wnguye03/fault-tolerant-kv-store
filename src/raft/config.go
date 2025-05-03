@@ -10,9 +10,9 @@ package raft
 
 import (
 	"bytes"
-	"lab5/labgob"
-	"lab5/labrpc"
-	"lab5/logger"
+	"kvraft/gob"
+	"kvraft/rpc"
+	"kvraft/logger"
 	"log"
 	"math/rand"
 	"runtime"
@@ -59,7 +59,7 @@ type config struct {
 	mu          sync.Mutex
 	t           *testing.T
 	finished    int32
-	net         *labrpc.Network
+	net         *rpc.Network
 	n           int
 	rafts       []*Raft
 	applyErr    []string // from apply channel readers
@@ -91,7 +91,7 @@ func make_config(t *testing.T, n int, unreliable bool, snapshot bool) *config {
 	runtime.GOMAXPROCS(4)
 	cfg := &config{}
 	cfg.t = t
-	cfg.net = labrpc.MakeNetwork()
+	cfg.net = rpc.MakeNetwork()
 	cfg.n = n
 	cfg.applyErr = make([]string, cfg.n)
 	cfg.rafts = make([]*Raft, cfg.n)
@@ -208,7 +208,7 @@ func (cfg *config) ingestSnap(i int, snapshot []byte, index int) string {
 		return "nil snapshot"
 	}
 	r := bytes.NewBuffer(snapshot)
-	d := labgob.NewDecoder(r)
+	d := gob.NewDecoder(r)
 	var lastIncludedIndex int
 	var xlog []interface{}
 	if d.Decode(&lastIncludedIndex) != nil ||
@@ -287,7 +287,7 @@ func (cfg *config) start1(i int, applier func(int, chan ApplyMsg)) {
 	}
 
 	// a fresh set of ClientEnds.
-	ends := make([]*labrpc.ClientEnd, cfg.n)
+	ends := make([]*rpc.ClientEnd, cfg.n)
 	for j := 0; j < cfg.n; j++ {
 		ends[j] = cfg.net.MakeEnd(cfg.endnames[i][j])
 		cfg.net.Connect(cfg.endnames[i][j], j)
@@ -329,8 +329,8 @@ func (cfg *config) start1(i int, applier func(int, chan ApplyMsg)) {
 
 	go applier(i, applyCh)
 
-	svc := labrpc.MakeService(rf)
-	srv := labrpc.MakeServer()
+	svc := rpc.MakeService(rf)
+	srv := rpc.MakeServer()
 	srv.AddService(svc)
 	cfg.net.AddServer(i, srv)
 }

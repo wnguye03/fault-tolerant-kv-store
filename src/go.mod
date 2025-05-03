@@ -1,3 +1,3 @@
-module lab5
+module kvraft
 
 go 1.20

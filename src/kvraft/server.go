@@ -1,10 +1,10 @@
 package kvraft
 
 import (
-	"lab5/labgob"
-	"lab5/labrpc"
-	"lab5/logger"
-	"lab5/raft"
+	"kvraft/gob"
+	"kvraft/rpc"
+	"kvraft/logger"
+	"kvraft/raft"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -58,9 +58,10 @@ func (kv *KVServer) sendOp(op Op) (Result, bool) {
 
 	//println("sendop 2")
 
+	kv.mu.Lock()
 	ch := make(chan Result, 1)
 	kv.notifyCh[index] = ch
-	//kv.mu.Unlock()
+	kv.mu.Unlock()
 
 	//println("sendop 3")
 
@@ -68,9 +69,9 @@ func (kv *KVServer) sendOp(op Op) (Result, bool) {
 	case result := <-ch:
 		return result, true
 	case <-time.After(500 * time.Millisecond):
-		//kv.mu.Lock()
+		kv.mu.Lock()
 		delete(kv.notifyCh, index)
-		//kv.mu.Unlock()
+		kv.mu.Unlock()
 		return Result{Err: ErrTimeout}, false
 	}
 }
@@ -81,6 +82,7 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 
 	// defer kv.mu.Unlock()
 	//println("s get 1")
+	
 	getOperation := Op{
 		Operation: "Get",
 		Key:       args.Key,
@@ -191,12 +193,12 @@ func (kv *KVServer) killed() bool {
 // you don't need to snapshot.
 // StartKVServer() must return quickly, so it should start goroutines
 // for any long-running work.
-func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
+func StartKVServer(servers []*rpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
 	//println("s start")
 	// logger := Logger(me)
-	// call labgob.Register on structures you want
+	// call gob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
-	labgob.Register(Op{})
+	gob.Register(Op{})
 
 	kv := new(KVServer)
 	kv.me = me

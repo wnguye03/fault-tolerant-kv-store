@@ -4,7 +4,7 @@ package logger
 
 import (
 	"fmt"
-	"lab5/constants"
+	"kvraft/constants"
 	"os"
 	"time"
 )

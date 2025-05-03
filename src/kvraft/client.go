@@ -4,17 +4,15 @@ import (
 	"crypto/rand"
 	"time"
 
-	// "lab5/constants"
-	"lab5/constants"
-	"lab5/labrpc"
-	"lab5/logger"
+	"kvraft/constants"
+	"kvraft/rpc"
+	"kvraft/logger"
 	"math/big"
 )
 
 type Clerk struct {
-	servers []*labrpc.ClientEnd
+	servers []*rpc.ClientEnd
 	logger  *logger.Logger
-	// You will have to modify this struct.
 	clerkId   int64
 	requestId int64
 }
@@ -26,11 +24,10 @@ func nrand() int64 {
 	return x
 }
 
-func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
+func MakeClerk(servers []*rpc.ClientEnd) *Clerk {
 	//println("MakeClerk")
 	ck := new(Clerk)
 	ck.servers = servers
-	// You'll have to add code here.
 	ck.clerkId = nrand()
 	ck.requestId = 0
 	ck.logger = logger.NewLogger(int(ck.clerkId), true, "Clerk", constants.ClerkLoggingMap)
@@ -49,12 +46,16 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 // must match the declared types of the RPC handler function's
 // arguments. and reply must be passed as a pointer.
 func (ck *Clerk) Get(key string) string {
+	// ck.mu.Lock()
 	ck.requestId++
+
+
 	args := GetArgs{
 		Key:       key,
 		ClerkId:   ck.clerkId,
 		RequestId: ck.requestId,
 	}
+	// ck.mu.Unlock()
 	//println("c get")
 	// try forever
 	for {
@@ -108,6 +109,7 @@ func (ck *Clerk) Get(key string) string {
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 	//println("c putappend")
 	// You will have to modify this function.
+	// ck.mu.Lock()
 	ck.requestId++
 	args := PutAppendArgs{
 		Key:       key,
@@ -116,6 +118,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 		ClerkId:   ck.clerkId,
 		RequestId: ck.requestId,
 	}
+	// ck.mu.Unlock()
 
 	for {
 		//println("c putappend 0")

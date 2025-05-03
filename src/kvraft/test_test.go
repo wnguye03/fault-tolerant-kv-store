@@ -3,8 +3,8 @@ package kvraft
 import (
 	"fmt"
 	"io/ioutil"
-	"lab5/models"
-	"lab5/porcupine"
+	"kvraft/models"
+	"kvraft/porcupine"
 	"math/rand"
 	"strconv"
 	"strings"

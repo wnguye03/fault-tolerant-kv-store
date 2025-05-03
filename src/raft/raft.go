@@ -22,15 +22,15 @@ import (
 
 	"bytes"
 	"fmt"
-	"lab5/constants"
-	"lab5/labgob"
-	"lab5/logger"
+	"kvraft/constants"
+	"kvraft/gob"
+	"kvraft/logger"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"lab5/labrpc"
+	"kvraft/rpc"
 )
 
 // as each Raft peer becomes aware that successive log entries are
@@ -69,7 +69,7 @@ type Raft struct {
 	lock sync.Mutex // Lock to protect the shared accessed during log replication
 	cond *sync.Cond // Cond variable to synchronized the log replication go routines
 
-	peers     []*labrpc.ClientEnd // RPC end points of all peers
+	peers     []*rpc.ClientEnd // RPC end points of all peers
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
 	dead      int32               // set by Kill()
@@ -117,14 +117,14 @@ func (rf *Raft) persist() {
 	// Your code here (4C).
 	// Example:
 	// w := new(bytes.Buffer)
-	// e := labgob.NewEncoder(w)
+	// e := gob.NewEncoder(w)
 	// e.Encode(rf.xxx)
 	// e.Encode(rf.yyy)
 	// raftstate := w.Bytes()
 	// rf.persister.Save(raftstate, nil)
 
 	w := new(bytes.Buffer)
-	e := labgob.NewEncoder(w)
+	e := gob.NewEncoder(w)
 
 	// rf.mu.Lock()
 	e.Encode(rf.currTerm)
@@ -144,7 +144,7 @@ func (rf *Raft) readPersist(data []byte) {
 	// Your code here (4C).
 	// Example:
 	// r := bytes.NewBuffer(data)
-	// d := labgob.NewDecoder(r)
+	// d := gob.NewDecoder(r)
 	// var xxx
 	// var yyy
 	// if d.Decode(&xxx) != nil ||
@@ -156,7 +156,7 @@ func (rf *Raft) readPersist(data []byte) {
 	// }
 
 	r := bytes.NewBuffer(data)
-	d := labgob.NewDecoder(r)
+	d := gob.NewDecoder(r)
 
 	var currTerm, votedFor int
 	var logs []LogEntry
@@ -265,7 +265,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 // the same as the types of the arguments declared in the
 // handler function (including whether they are pointers).
 //
-// The labrpc package simulates a lossy network, in which servers
+// The rpc package simulates a lossy network, in which servers
 // may be unreachable, and in which requests and replies may be lost.
 // Call() sends a request and waits for a reply. If a reply arrives
 // within a timeout interval, Call() returns true; otherwise
@@ -277,7 +277,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 // handler function on the server side does not return.  Thus there
 // is no need to implement your own timeouts around Call().
 //
-// look at the comments in ../labrpc/labrpc.go for more details.
+// look at the comments in ../rpc/rpc.go for more details.
 //
 // if you're having trouble getting RPC to work, check that you've
 // capitalized all field names in structs passed over RPC, and
@@ -531,7 +531,7 @@ func (rf *Raft) ticker() {
 // tester or service expects Raft to send ApplyMsg messages.
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
-func Make(peers []*labrpc.ClientEnd, me int,
+func Make(peers []*rpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
 
 	// Your initialization code here (4A, 4B, 4C).

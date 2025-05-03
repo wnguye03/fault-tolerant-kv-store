@@ -1,4 +1,4 @@
-package labrpc
+package rpc
 
 //
 // channel-based RPC, for cpsc416 labs.
@@ -6,13 +6,13 @@ package labrpc
 // simulates a network that can lose requests, lose replies,
 // delay messages, and entirely disconnect particular hosts.
 //
-// we will use the original labrpc.go to test your code for grading.
+// we will use the original rpc.go to test your code for grading.
 // so, while you can modify this code to help you debug, please
 // test against the original before submitting.
 //
 // adapted from Go net/rpc/server.go.
 //
-// sends labgob-encoded values to ensure that RPCs
+// sends gob-encoded values to ensure that RPCs
 // don't include references to program objects.
 //
 // net := MakeNetwork() -- holds network, clients, servers.
@@ -51,7 +51,7 @@ package labrpc
 
 import (
 	"bytes"
-	"lab5/labgob"
+	"kvraft/gob"
 	"log"
 	"math/rand"
 	"reflect"
@@ -91,7 +91,7 @@ func (e *ClientEnd) Call(svcMeth string, args interface{}, reply interface{}) bo
 	req.replyCh = make(chan replyMsg)
 
 	qb := new(bytes.Buffer)
-	qe := labgob.NewEncoder(qb)
+	qe := gob.NewEncoder(qb)
 	if err := qe.Encode(args); err != nil {
 		panic(err)
 	}
@@ -114,7 +114,7 @@ func (e *ClientEnd) Call(svcMeth string, args interface{}, reply interface{}) bo
 	rep := <-req.replyCh
 	if rep.ok {
 		rb := bytes.NewBuffer(rep.reply)
-		rd := labgob.NewDecoder(rb)
+		rd := gob.NewDecoder(rb)
 		if err := rd.Decode(reply); err != nil {
 			log.Fatalf("ClientEnd.Call(): decode reply: %v\n", err)
 		}
@@ -423,7 +423,7 @@ func (rs *Server) dispatch(req reqMsg) replyMsg {
 		for k, _ := range rs.services {
 			choices = append(choices, k)
 		}
-		log.Fatalf("labrpc.Server.dispatch(): unknown service %v in %v.%v; expecting one of %v\n",
+		log.Fatalf("rpc.Server.dispatch(): unknown service %v in %v.%v; expecting one of %v\n",
 			serviceName, serviceName, methodName, choices)
 		return replyMsg{false, nil}
 	}
@@ -483,7 +483,7 @@ func (svc *Service) dispatch(methname string, req reqMsg) replyMsg {
 
 		// decode the argument.
 		ab := bytes.NewBuffer(req.args)
-		ad := labgob.NewDecoder(ab)
+		ad := gob.NewDecoder(ab)
 		ad.Decode(args.Interface())
 
 		// allocate space for the reply.
@@ -497,7 +497,7 @@ func (svc *Service) dispatch(methname string, req reqMsg) replyMsg {
 
 		// encode the reply.
 		rb := new(bytes.Buffer)
-		re := labgob.NewEncoder(rb)
+		re := gob.NewEncoder(rb)
 		re.EncodeValue(replyv)
 
 		return replyMsg{true, rb.Bytes()}
@@ -506,7 +506,7 @@ func (svc *Service) dispatch(methname string, req reqMsg) replyMsg {
 		for k, _ := range svc.methods {
 			choices = append(choices, k)
 		}
-		log.Fatalf("labrpc.Service.dispatch(): unknown method %v in %v; expecting one of %v\n",
+		log.Fatalf("rpc.Service.dispatch(): unknown method %v in %v; expecting one of %v\n",
 			methname, req.svcMeth, choices)
 		return replyMsg{false, nil}
 	}

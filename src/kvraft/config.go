@@ -1,7 +1,7 @@
 package kvraft
 
 import (
-	"lab5/labrpc"
+	"kvraft/rpc"
 	"os"
 	"testing"
 
@@ -9,7 +9,7 @@ import (
 	crand "crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"lab5/raft"
+	"kvraft/raft"
 	"math/big"
 	"math/rand"
 	"runtime"
@@ -33,8 +33,8 @@ func makeSeed() int64 {
 }
 
 // Randomize server handles
-func random_handles(kvh []*labrpc.ClientEnd) []*labrpc.ClientEnd {
-	sa := make([]*labrpc.ClientEnd, len(kvh))
+func random_handles(kvh []*rpc.ClientEnd) []*rpc.ClientEnd {
+	sa := make([]*rpc.ClientEnd, len(kvh))
 	copy(sa, kvh)
 	for i := range sa {
 		j := rand.Intn(i + 1)
@@ -46,7 +46,7 @@ func random_handles(kvh []*labrpc.ClientEnd) []*labrpc.ClientEnd {
 type config struct {
 	mu           sync.Mutex
 	t            *testing.T
-	net          *labrpc.Network
+	net          *rpc.Network
 	n            int
 	kvservers    []*KVServer
 	saved        []*raft.Persister
@@ -195,7 +195,7 @@ func (cfg *config) makeClient(to []int) *Clerk {
 	defer cfg.mu.Unlock()
 
 	// a fresh set of ClientEnds.
-	ends := make([]*labrpc.ClientEnd, cfg.n)
+	ends := make([]*rpc.ClientEnd, cfg.n)
 	endnames := make([]string, cfg.n)
 	for j := 0; j < cfg.n; j++ {
 		endnames[j] = randstring(20)
@@ -296,7 +296,7 @@ func (cfg *config) StartServer(i int) {
 	}
 
 	// a fresh set of ClientEnds.
-	ends := make([]*labrpc.ClientEnd, cfg.n)
+	ends := make([]*rpc.ClientEnd, cfg.n)
 	for j := 0; j < cfg.n; j++ {
 		ends[j] = cfg.net.MakeEnd(cfg.endnames[i][j])
 		cfg.net.Connect(cfg.endnames[i][j], j)
@@ -316,9 +316,9 @@ func (cfg *config) StartServer(i int) {
 
 	cfg.kvservers[i] = StartKVServer(ends, i, cfg.saved[i], cfg.maxraftstate)
 
-	kvsvc := labrpc.MakeService(cfg.kvservers[i])
-	rfsvc := labrpc.MakeService(cfg.kvservers[i].rf)
-	srv := labrpc.MakeServer()
+	kvsvc := rpc.MakeService(cfg.kvservers[i])
+	rfsvc := rpc.MakeService(cfg.kvservers[i].rf)
+	srv := rpc.MakeServer()
 	srv.AddService(kvsvc)
 	srv.AddService(rfsvc)
 	cfg.net.AddServer(i, srv)
@@ -369,7 +369,7 @@ func make_config(t *testing.T, n int, unreliable bool, maxraftstate int) *config
 	runtime.GOMAXPROCS(4)
 	cfg := &config{}
 	cfg.t = t
-	cfg.net = labrpc.MakeNetwork()
+	cfg.net = rpc.MakeNetwork()
 	cfg.n = n
 	cfg.kvservers = make([]*KVServer, cfg.n)
 	cfg.saved = make([]*raft.Persister, cfg.n)

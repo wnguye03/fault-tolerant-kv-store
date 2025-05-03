@@ -1,4 +1,4 @@
-package labrpc
+package rpc
 
 import "testing"
 import "strconv"
