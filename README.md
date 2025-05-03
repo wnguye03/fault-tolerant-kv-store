@@ -14,20 +14,15 @@ Inspired by materials from MIT's 6.5840 Distributed Systems course (Morris, Kaas
 
 
 ✅ Features
-Strong Consistency & Linearizability
-Ensures Get/Put/Append operations behave as if executed by a single server.
+- Strong Consistency & Linearizability: Ensures Get/Put/Append operations behave as if executed by a single server.
 
-Fault Tolerance via Replication
-Supports crash and partition recovery through Raft-based log replication and leader election.
+- Fault Tolerance via Replication: Supports crash and partition recovery through Raft-based log replication and leader election.
 
-Exactly-Once Semantics
-Client-side deduplication prevents repeated execution of retried operations.
+- Exactly-Once Semantics: Client-side deduplication prevents repeated execution of retried operations.
 
-Dynamic Leader Tracking
-Clients maintain leader affinity to reduce latency and improve throughput.
+- Dynamic Leader Tracking: Clients maintain leader affinity to reduce latency and improve throughput.
 
-Partition & Recovery Handling
-Robust handling of partial failures and asynchronous recovery with no data loss.
+- Partition & Recovery Handling: Robust handling of partial failures and asynchronous recovery with no data loss.
 
 🧪 Testing Highlights
 Validated through test-driven development against extensive scenarios including:
