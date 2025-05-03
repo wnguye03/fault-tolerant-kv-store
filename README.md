@@ -37,11 +37,12 @@ Validated through test-driven development against extensive scenarios including:
 
 📎 Example Usage
 
+```
 clerk.Put("x", "1")       // Stores value "1" for key "x"
 
 clerk.Append("x", "2")    // Updates "x" -> "12"
 
 value := clerk.Get("x")   // Returns "12"
-
+```
 
 Built by: William Nguyen and Michelle Zhou as part of CPSC 416, Distributed Systems at the University of British Columbia
