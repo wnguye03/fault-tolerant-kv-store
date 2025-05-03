@@ -4,7 +4,6 @@ A fault-tolerant, linearizable key/value store built using a custom implementati
 Inspired by materials from MIT's 6.5840 Distributed Systems course (Morris, Kaashoek, Zeldovich) and developed at UBC as part of a distributed systems deep dive.
 
 
-
 ## 🔧 Language & Core Technologies
 - Golang
 
@@ -20,20 +19,20 @@ Inspired by materials from MIT's 6.5840 Distributed Systems course (Morris, Kaas
 
 - **Exactly-Once Semantics**: Client-side deduplication prevents repeated execution of retried operations.
 
-- **Dynamic Leader Tracking**: Clients maintain leader affinity to reduce latency and improve throughput.
+- **Dynamic Leader Tracking**: Clients maintain leader tracking to reduce latency and improve throughput.
 
 - **Partition & Recovery Handling**: Robust handling of partial failures and asynchronous recovery with no data loss.
 
 ## 🧪 Testing Highlights
-Validated through test-driven development against extensive scenarios including:
+Validated through test-driven development against many scenarios including:
 
-- High concurrency (many clients)
+- High concurrency 
 
 - Network unreliability and leader reelections
 
 - Server crashes, restarts, and healing from partitions
 
-- Randomized key operations under stress
+- Randomized key operations under varying load
 
 ## 📎 Example Usage
 
