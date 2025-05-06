@@ -1,16 +1,10 @@
 package rpc
 
 //
-// channel-based RPC, for cpsc416 labs.
+// channel-based RPC
 //
 // simulates a network that can lose requests, lose replies,
 // delay messages, and entirely disconnect particular hosts.
-//
-// we will use the original rpc.go to test your code for grading.
-// so, while you can modify this code to help you debug, please
-// test against the original before submitting.
-//
-// adapted from Go net/rpc/server.go.
 //
 // sends gob-encoded values to ensure that RPCs
 // don't include references to program objects.
